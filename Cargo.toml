@@ -2,6 +2,10 @@
 name = "to_and_fro"
 version = "0.1.0"
 edition = "2021"
+description = "Proc macro for generating implimentations of Display and FromStr for Enum Variants"
+repository = "https://github.com/tascord/ToAndFro"
+homepage = "https://github.com/tascord/ToAndFro"
+license = "MIT"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
