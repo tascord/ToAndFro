@@ -1,6 +1,6 @@
 [package]
 name = "to_and_fro"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 description = "Proc macro for generating implimentations of Display and FromStr for Enum Variants"
 repository = "https://github.com/tascord/ToAndFro"
@@ -8,10 +8,10 @@ homepage = "https://github.com/tascord/ToAndFro"
 license = "MIT"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [lib]
 proc-macro = true
 
 [dependencies]
+anyhow = "1.0.75"
 quote = "1.0.33"
 syn = { version = "2.0.39", features = ["full", "fold"] }

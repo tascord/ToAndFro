@@ -51,9 +51,6 @@ pub fn tf_derive(input: TokenStream) -> TokenStream {
 
         // -- //
 
-        #[derive(Debug)]
-        pub struct ParseError;
-
         impl std::fmt::Display for #name {
             fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
                 match self {
@@ -63,12 +60,12 @@ pub fn tf_derive(input: TokenStream) -> TokenStream {
         }
 
         impl std::str::FromStr for #name {
-            type Err = ParseError;
+            type Err = anyhow::Error;
 
             fn from_str(s: &str) -> Result<Self, Self::Err> {
                 match s {
                     #(#from_str_arms)*
-                    _ => Err(ParseError),
+                    _ => Err(anyhow::anyhow!("Invalid variant {} for enum {}", s, stringify!(#name))),
                 }
             }
         }

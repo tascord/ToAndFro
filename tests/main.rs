@@ -25,4 +25,9 @@ mod tests {
             TestEnum::Generation
         )
     }
+
+    #[test]
+    pub fn fail_from_str() {
+        assert!(TestEnum::from_str("Not a variant").is_err())
+    }
 }
