@@ -46,4 +46,28 @@ mod tests {
             TestEnum::ConsecteturAdipiscingElit.to_string()
         );
     }
+
+    #[derive(ToAndFro)]
+    #[input_case("snake")]
+    #[output_case("kebab")]
+    pub enum TestEnum2 {
+        LoremIpsum,
+    }
+
+    #[test]
+    pub fn default_casing() {
+        
+        // Input
+        assert_eq!(
+            TestEnum2::from_str("lorem_ipsum").unwrap(),
+            TestEnum2::LoremIpsum
+        );
+
+        // Output
+        assert_eq!(
+            "lorem-ipsum",
+            TestEnum2::LoremIpsum.to_string()
+        );
+
+    }
 }

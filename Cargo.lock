@@ -45,7 +45,7 @@ dependencies = [
 
 [[package]]
 name = "to_and_fro"
-version = "0.3.1"
+version = "0.3.2"
 dependencies = [
  "anyhow",
  "heck",

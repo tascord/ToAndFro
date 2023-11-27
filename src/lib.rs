@@ -3,9 +3,9 @@ use heck::{
     AsTitleCase, AsTrainCase, AsUpperCamelCase,
 };
 
-use std::rc::Rc;
 use proc_macro::TokenStream;
 use quote::quote;
+use std::rc::Rc;
 use syn::{parse_macro_input, Data, DeriveInput};
 
 type Caser = Rc<Box<dyn Fn(&str) -> String + Send + Sync + 'static>>;
@@ -45,17 +45,18 @@ pub fn tf_derive(input: TokenStream) -> TokenStream {
         _ => panic!("Display can only be implemented for enums"),
     };
 
-    //
-
-    let caser = match_supplied_casing("input_case", &input.attrs)
+    let i_caser = match_supplied_casing("input_case", &input.attrs)
         .unwrap_or(Rc::new(Box::new(|s| s.to_string())));
 
-    //
+    let o_caser = match_supplied_casing("output_case", &input.attrs)
+        .unwrap_or(Rc::new(Box::new(|s| s.to_string())));
+
     let from_str_arms = data.variants.iter().map(|variant| {
         let variant_name = &variant.ident;
-        let caser = match_supplied_casing("input_case", &variant.attrs).unwrap_or(caser.clone());
+        let caser =
+            match_supplied_casing("input_case", &variant.attrs).unwrap_or(i_caser.clone());
         let cased_variant = caser(variant_name.to_string().as_str());
-        
+
         quote! {
             #cased_variant => Ok(#name::#variant_name),
         }
@@ -63,7 +64,8 @@ pub fn tf_derive(input: TokenStream) -> TokenStream {
 
     let display_arms = data.variants.iter().map(|variant| {
         let variant_name = &variant.ident;
-        let caser = match_supplied_casing("output_case", &variant.attrs).unwrap_or(caser.clone());
+        let caser =
+            match_supplied_casing("output_case", &variant.attrs).unwrap_or(o_caser.clone());
         let cased_variant = caser(variant_name.to_string().as_str());
 
         quote! {
