@@ -61,6 +61,18 @@ pub enum TestEnum {
 TestEnum::from_str("ValueFour") // TestEnum::Fallback
 ```
 
+### Disallow field to be parsed FromStr
+```rs
+#[derive(ToAndFro)]
+pub enum TestEnum {
+  #[reject]
+  ValueOne,
+  ValueTwo
+}
+
+TestEnum::from_str("ValueOne")  // anyhow::Error("Invalid variant ValueOne for enum TestEnum")
+```
+
 #### List of supported cases:
 - `kebab` [(heck)](https://docs.rs/heck/latest/heck/struct.AsKebabCase.html)
 - `pascal` [(heck)](https://docs.rs/heck/latest/heck/struct.AsPascalCase.html)

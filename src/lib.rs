@@ -4,7 +4,7 @@ use heck::{
 };
 
 use proc_macro::TokenStream;
-use quote::{quote, format_ident};
+use quote::{format_ident, quote};
 use std::rc::Rc;
 use syn::{parse_macro_input, Data, DeriveInput};
 
@@ -36,7 +36,14 @@ fn match_supplied_casing(ident: &str, attrs: &Vec<syn::Attribute>) -> Option<Cas
     }
 }
 
-#[proc_macro_derive(ToAndFro, attributes(input_case, output_case, default_to))]
+fn should_reject(attrs: &Vec<syn::Attribute>) -> bool {
+    attrs
+        .iter()
+        .find(|attr| attr.path().is_ident("reject"))
+        .is_some()
+}
+
+#[proc_macro_derive(ToAndFro, attributes(input_case, output_case, default_to, reject))]
 pub fn tf_derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let name = input.ident;
@@ -58,7 +65,7 @@ pub fn tf_derive(input: TokenStream) -> TokenStream {
         Some(x) => {
             let ident = format_ident!("{}", x);
             quote!(Ok(#name::#ident))
-        },
+        }
         None => quote!(Err(anyhow::anyhow!(
             "Invalid variant {} for enum {}",
             s,
@@ -68,6 +75,10 @@ pub fn tf_derive(input: TokenStream) -> TokenStream {
 
     let from_str_arms = data.variants.iter().map(|variant| {
         let variant_name = &variant.ident;
+        if should_reject(&variant.attrs) {
+            return quote!();
+        }
+
         let caser = match_supplied_casing("input_case", &variant.attrs).unwrap_or(i_caser.clone());
         let cased_variant = caser(variant_name.to_string().as_str());
 
