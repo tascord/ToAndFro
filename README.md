@@ -34,6 +34,19 @@ TestEnum::from_str("ValueTwo")  //  TestEnum::ValueTwo
 
 TestEnum::from_str("ValueFour") // anyhow::Error("Invalid variant ValueFour for enum TestEnum")
 ```
+
+### Casing
+```rs
+#[derive(ToAndFro)]
+pub enum TestEnum {
+  #[input_case("snake")]        // FromStr will parse only snake_case input
+  ValueOne,
+  #[output_case("kebab")]       // Display methods will produce a kebab-case output
+  ValueTwo,
+  ValueThree                    // Defaults to as written input, and as-written output
+}
+```
+
 ## Feedback
 I appreciate all feedback, in whatever forms they might take.  
 If you're looking to specifically make a [Bug Report](https://github.com/tascord/ToAndFro/issues/new?template=bug_report.md), or [Suggest a Feature](https://github.com/tascord/ToAndFro/issues/new?template=feature_request.md), please do so through their templates in the issues section.
