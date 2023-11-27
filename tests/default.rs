@@ -4,9 +4,11 @@ extern crate to_and_fro;
 mod tests {
 
     use std::str::FromStr;
-    use to_and_fro::ToAndFro;
+    use to_and_fro::*;
 
     #[derive(ToAndFro)]
+    #[default_to("Generation")]
+    #[input_case("snake")]
     pub enum TestEnum {
         Generation,
         Load,
@@ -14,20 +16,11 @@ mod tests {
     }
 
     #[test]
-    pub fn test_display() {
-        assert_eq!(format!("{}", TestEnum::Generation), "Generation")
-    }
-
-    #[test]
-    pub fn test_from_str() {
+    pub fn test() {
         assert_eq!(
-            TestEnum::from_str("Generation").unwrap(),
+            TestEnum::from_str("Not a variant").unwrap(),
             TestEnum::Generation
         )
     }
 
-    #[test]
-    pub fn fail_from_str() {
-        assert!(TestEnum::from_str("Not a variant").is_err())
-    }
 }

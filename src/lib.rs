@@ -4,7 +4,7 @@ use heck::{
 };
 
 use proc_macro::TokenStream;
-use quote::quote;
+use quote::{quote, format_ident};
 use std::rc::Rc;
 use syn::{parse_macro_input, Data, DeriveInput};
 
@@ -36,7 +36,7 @@ fn match_supplied_casing(ident: &str, attrs: &Vec<syn::Attribute>) -> Option<Cas
     }
 }
 
-#[proc_macro_derive(ToAndFro, attributes(input_case, output_case))]
+#[proc_macro_derive(ToAndFro, attributes(input_case, output_case, default_to))]
 pub fn tf_derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let name = input.ident;
@@ -45,16 +45,30 @@ pub fn tf_derive(input: TokenStream) -> TokenStream {
         _ => panic!("Display can only be implemented for enums"),
     };
 
-    let i_caser = match_supplied_casing("input_case", &input.attrs)
-        .unwrap_or(Rc::new(Box::new(|s| s.to_string())));
+    let d_caser: Caser = Rc::new(Box::new(|s| s.to_string()));
+    let i_caser = match_supplied_casing("input_case", &input.attrs).unwrap_or(d_caser.clone());
+    let o_caser = match_supplied_casing("output_case", &input.attrs).unwrap_or(d_caser.clone());
 
-    let o_caser = match_supplied_casing("output_case", &input.attrs)
-        .unwrap_or(Rc::new(Box::new(|s| s.to_string())));
+    let from_str_failure = match input
+        .attrs
+        .iter()
+        .find(|attr| attr.path().is_ident("default_to"))
+        .map(|attr| attr.parse_args::<syn::LitStr>().unwrap().value())
+    {
+        Some(x) => {
+            let ident = format_ident!("{}", x);
+            quote!(Ok(#name::#ident))
+        },
+        None => quote!(Err(anyhow::anyhow!(
+            "Invalid variant {} for enum {}",
+            s,
+            stringify!(#name)
+        ))),
+    };
 
     let from_str_arms = data.variants.iter().map(|variant| {
         let variant_name = &variant.ident;
-        let caser =
-            match_supplied_casing("input_case", &variant.attrs).unwrap_or(i_caser.clone());
+        let caser = match_supplied_casing("input_case", &variant.attrs).unwrap_or(i_caser.clone());
         let cased_variant = caser(variant_name.to_string().as_str());
 
         quote! {
@@ -64,8 +78,7 @@ pub fn tf_derive(input: TokenStream) -> TokenStream {
 
     let display_arms = data.variants.iter().map(|variant| {
         let variant_name = &variant.ident;
-        let caser =
-            match_supplied_casing("output_case", &variant.attrs).unwrap_or(o_caser.clone());
+        let caser = match_supplied_casing("output_case", &variant.attrs).unwrap_or(o_caser.clone());
         let cased_variant = caser(variant_name.to_string().as_str());
 
         quote! {
@@ -106,7 +119,7 @@ pub fn tf_derive(input: TokenStream) -> TokenStream {
             fn from_str(s: &str) -> Result<Self, Self::Err> {
                 match s {
                     #(#from_str_arms)*
-                    _ => Err(anyhow::anyhow!("Invalid variant {} for enum {}", s, stringify!(#name))),
+                    _ => #from_str_failure
                 }
             }
         }

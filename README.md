@@ -47,6 +47,20 @@ pub enum TestEnum {
 }
 ```
 
+### Fallback for FromStr
+```rs
+#[derive(ToAndFro)]
+#[default_to("Fallback")]
+pub enum TestEnum {
+  Fallback,
+  ValueOne,
+  ValueTwo,
+  ValueThree
+}
+
+TestEnum::from_str("ValueFour") // TestEnum::Fallback
+```
+
 #### List of supported cases:
 - `kebab` [(heck)](https://docs.rs/heck/latest/heck/struct.AsKebabCase.html)
 - `pascal` [(heck)](https://docs.rs/heck/latest/heck/struct.AsPascalCase.html)
