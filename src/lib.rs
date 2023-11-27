@@ -9,6 +9,19 @@ use std::rc::Rc;
 use syn::{parse_macro_input, Data, DeriveInput};
 
 type Caser = Rc<Box<dyn Fn(&str) -> String + Send + Sync + 'static>>;
+static CASES: [&str; 11] = [
+    "kebab",
+    "lower_camel",
+    "pascal",
+    "shouty_kebab",
+    "shouty_snake",
+    "snake",
+    "title",
+    "train",
+    "upper_camel",
+    "upper",
+    "lower",
+];
 
 fn match_supplied_casing(ident: &str, attrs: &Vec<syn::Attribute>) -> Option<Caser> {
     let casing = attrs
@@ -43,6 +56,19 @@ fn should_reject(attrs: &Vec<syn::Attribute>) -> bool {
         .is_some()
 }
 
+fn check_case(args: TokenStream) {
+    let mut args = args.into_iter();
+    if args.clone().count() != 1 {
+        panic!("Expected one argument");
+    }
+
+    let arg = args.next().unwrap();
+    if !CASES.contains(&arg.to_string().as_str()) {
+        panic!("Invalid casing {}", arg);
+    }
+}
+
+/// Generate automatic implementations of `FromStr`, `Display`, `Debug`, and `PartialEq` for an enum.
 #[proc_macro_derive(ToAndFro, attributes(input_case, output_case, default_to, reject))]
 pub fn tf_derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -138,4 +164,74 @@ pub fn tf_derive(input: TokenStream) -> TokenStream {
     };
 
     TokenStream::from(expanded)
+}
+
+/// Define the case to expect when parsing a variant from a string.
+/// Valid values are:
+/// - `kebab` [(heck)](https://docs.rs/heck/latest/heck/struct.AsKebabCase.html)
+/// - `pascal` [(heck)](https://docs.rs/heck/latest/heck/struct.AsPascalCase.html)
+/// - `snake` [(heck)](https://docs.rs/heck/latest/heck/struct.AsSnakeCase.html)
+/// - `title` [(heck)](https://docs.rs/heck/latest/heck/struct.AsTitleCase.html)
+/// - `train` [(heck)](https://docs.rs/heck/latest/heck/struct.AsTrainCase.html)
+/// - `lower_camel` [(heck)](https://docs.rs/heck/latest/heck/struct.AsLowerCamelCase.html)
+/// - `upper_camel` [(heck)](https://docs.rs/heck/latest/heck/struct.AsUpperCamelCase.html)
+/// - `shouty_kebab` [(heck)](https://docs.rs/heck/latest/heck/struct.AsShoutyKebabCase.html)
+/// - `shouty_snake` [(heck)](https://docs.rs/heck/latest/heck/struct.AsShoutySnakeCase.html)
+/// - `upper` (UPPERCASE)
+/// - `lower` (lowercase)
+#[proc_macro_attribute]
+pub fn input_case(args: TokenStream, input: TokenStream) -> TokenStream {
+    check_case(args);
+    input
+}
+
+/// Define the case to stringify to through Display, or Debug.
+/// Valid values are:
+/// - `kebab` [(heck)](https://docs.rs/heck/latest/heck/struct.AsKebabCase.html)
+/// - `pascal` [(heck)](https://docs.rs/heck/latest/heck/struct.AsPascalCase.html)
+/// - `snake` [(heck)](https://docs.rs/heck/latest/heck/struct.AsSnakeCase.html)
+/// - `title` [(heck)](https://docs.rs/heck/latest/heck/struct.AsTitleCase.html)
+/// - `train` [(heck)](https://docs.rs/heck/latest/heck/struct.AsTrainCase.html)
+/// - `lower_camel` [(heck)](https://docs.rs/heck/latest/heck/struct.AsLowerCamelCase.html)
+/// - `upper_camel` [(heck)](https://docs.rs/heck/latest/heck/struct.AsUpperCamelCase.html)
+/// - `shouty_kebab` [(heck)](https://docs.rs/heck/latest/heck/struct.AsShoutyKebabCase.html)
+/// - `shouty_snake` [(heck)](https://docs.rs/heck/latest/heck/struct.AsShoutySnakeCase.html)
+/// - `upper` (UPPERCASE)
+/// - `lower` (lowercase)
+#[proc_macro_attribute]
+pub fn output_case(args: TokenStream, input: TokenStream) -> TokenStream {
+    check_case(args);
+    input
+}
+
+/// Defines the field to default to when parsing fails.
+/// ```rs
+/// #[derive(ToAndFro)]
+/// #[default_to("Load")]
+/// pub enum TestEnum {
+///   Generation,
+///   Load,
+///   Customers,
+/// }
+///
+/// assert_eq!(TestEnum::from_str("Uncaught Case").unwrap(), TestEnum::Load);
+/// ```
+#[proc_macro_attribute]
+pub fn default_to(args: TokenStream, input: TokenStream) -> TokenStream {
+    if args.clone().into_iter().count() != 1 {
+        panic!("#[default_to(\"...\")] takes one argument");
+    }
+
+    input
+}
+
+/// Rejects the variant from being parsed from a String.
+/// This either throws an Error on parse, or defaults to the variant specified with `default_to`.
+#[proc_macro_attribute]
+pub fn reject(args: TokenStream, input: TokenStream) -> TokenStream {
+    if !args.is_empty() {
+        panic!("#[reject] does not take arguments");
+    }
+
+    input
 }
