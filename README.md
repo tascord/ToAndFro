@@ -10,7 +10,7 @@ Automatic implimentations for `Display` and `FromStr` for things.
     <a href="https://crates.io/crates/to_and_fro">
       <img alt="Crates.io" src="https://img.shields.io/crates/d/to_and_fro">
     </a>
-    <a href="https://github.com/tascord/ToAndFro/actions/runs/6998808999/">
+    <a href="https://github.com/tascord/ToAndFro/actions/workflows/rust.yml">
       <img alt="GitHub Workflow Status (with event)" src="https://img.shields.io/github/actions/workflow/status/tascord/toandfro/rust.yml">
     </a>
 </div>
