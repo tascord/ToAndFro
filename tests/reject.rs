@@ -30,7 +30,7 @@ mod tests {
 
     #[derive(ToAndFro)]
     #[allow(dead_code)]
-    #[default_to("Load")]
+    #[default("Load")]
     pub enum TestEnum2 {
         #[reject]
         Generation,

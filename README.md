@@ -1,6 +1,6 @@
 # To, and Fro
 
-Automatic implimentations for `Display` and `FromStr` for things.
+Automatic implimentations for `Display`, `FromStr`, and others for Enums.
 
 
 <div align="center">
@@ -50,7 +50,7 @@ pub enum TestEnum {
 ### Fallback for FromStr
 ```rs
 #[derive(ToAndFro)]
-#[default_to("Fallback")]
+#[default("Fallback")]
 pub enum TestEnum {
   Fallback,
   ValueOne,

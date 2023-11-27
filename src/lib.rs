@@ -69,7 +69,7 @@ fn check_case(args: TokenStream) {
 }
 
 /// Generate automatic implementations of `FromStr`, `Display`, `Debug`, and `PartialEq` for an enum.
-#[proc_macro_derive(ToAndFro, attributes(input_case, output_case, default_to, reject))]
+#[proc_macro_derive(ToAndFro, attributes(input_case, output_case, default, reject))]
 pub fn tf_derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let name = input.ident;
@@ -85,7 +85,7 @@ pub fn tf_derive(input: TokenStream) -> TokenStream {
     let from_str_failure = match input
         .attrs
         .iter()
-        .find(|attr| attr.path().is_ident("default_to"))
+        .find(|attr| attr.path().is_ident("default"))
         .map(|attr| attr.parse_args::<syn::LitStr>().unwrap().value())
     {
         Some(x) => {
@@ -207,7 +207,7 @@ pub fn output_case(args: TokenStream, input: TokenStream) -> TokenStream {
 /// Defines the field to default to when parsing fails.
 /// ```rs
 /// #[derive(ToAndFro)]
-/// #[default_to("Load")]
+/// #[default("Load")]
 /// pub enum TestEnum {
 ///   Generation,
 ///   Load,
@@ -217,16 +217,16 @@ pub fn output_case(args: TokenStream, input: TokenStream) -> TokenStream {
 /// assert_eq!(TestEnum::from_str("Uncaught Case").unwrap(), TestEnum::Load);
 /// ```
 #[proc_macro_attribute]
-pub fn default_to(args: TokenStream, input: TokenStream) -> TokenStream {
+pub fn default(args: TokenStream, input: TokenStream) -> TokenStream {
     if args.clone().into_iter().count() != 1 {
-        panic!("#[default_to(\"...\")] takes one argument");
+        panic!("#[default(\"...\")] takes one argument");
     }
 
     input
 }
 
 /// Rejects the variant from being parsed from a String.
-/// This either throws an Error on parse, or defaults to the variant specified with `default_to`.
+/// This either throws an Error on parse, or defaults to the variant specified with `default`.
 #[proc_macro_attribute]
 pub fn reject(args: TokenStream, input: TokenStream) -> TokenStream {
     if !args.is_empty() {

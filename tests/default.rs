@@ -7,7 +7,7 @@ mod tests {
     use to_and_fro::*;
 
     #[derive(ToAndFro)]
-    #[default_to("Generation")]
+    #[default("Generation")]
     #[input_case("snake")]
     pub enum TestEnum {
         Generation,
