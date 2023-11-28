@@ -1,9 +1,9 @@
 use casing::{match_supplied_casing, Caser, CASES};
-use defaults::fromstr_failure;
+use defaults::{fromstr_failure, default_impl};
 use proc_macro::TokenStream;
 use quote::quote;
 use std::rc::Rc;
-use syn::{parse_macro_input, punctuated::Punctuated, Data, DeriveInput, Ident, Variant};
+use syn::{parse_macro_input, punctuated::Punctuated, Data, DeriveInput, Ident, Variant, DataEnum};
 
 mod casing;
 mod defaults;
@@ -56,18 +56,26 @@ fn map_variant(
         .collect()
 }
 
-/// Generate automatic implementations of `FromStr`, `Display`, `Debug`, and `PartialEq` for an enum.
-#[proc_macro_derive(ToAndFro, attributes(input_case, output_case, default, reject, casing))]
-pub fn tf_derive(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-    let name = input.ident;
-    let data = match input.data {
+fn preamble(input: DeriveInput) -> (DeriveInput, Ident, DataEnum) {
+    let name = input.clone().ident;
+    let data = match input.clone().data {
         Data::Enum(data) => data,
         _ => panic!("Display can only be implemented for enums"),
     };
 
-    let from_str_failure = fromstr_failure(name.clone(), &input.attrs);
+    (input, name, data)
+}
 
+/// Generate automatic implementations of `FromStr`, `Display`, `Debug`, and `PartialEq` for an enum.
+#[proc_macro_derive(ToAndFro, attributes(input_case, output_case, default, reject, casing))]
+pub fn tf_derive(input: TokenStream) -> TokenStream {
+    let (input, name, data) = preamble(parse_macro_input!(input as DeriveInput));    
+
+    // Generated based on default attr
+    let from_str_failure = fromstr_failure(name.clone(), &input.attrs);
+    let default_impl = default_impl(name.clone(), &input.attrs);
+
+    // Generated based on variants
     let from_str_arms = map_variant(
         &data.variants,
         &input.attrs,
@@ -80,6 +88,7 @@ pub fn tf_derive(input: TokenStream) -> TokenStream {
         },
     );
 
+    // Generated based on variants
     let display_arms = map_variant(
         &data.variants,
         &input.attrs,
@@ -92,8 +101,11 @@ pub fn tf_derive(input: TokenStream) -> TokenStream {
         },
     );
 
+    // Debug uses the same arms as Display
     let debug_arms = display_arms.clone();
     let expanded = quote! {
+
+        #default_impl
 
         impl std::fmt::Debug for #name {
             fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -108,8 +120,6 @@ pub fn tf_derive(input: TokenStream) -> TokenStream {
                 std::mem::discriminant(self) == std::mem::discriminant(other)
             }
         }
-
-        // -- //
 
         impl std::fmt::Display for #name {
             fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -193,6 +203,7 @@ pub fn output_case(args: TokenStream, input: TokenStream) -> TokenStream {
 }
 
 /// Defines the field to default to when parsing fails.
+/// Also generates a `Default` implimentation pointing to the default variant.
 /// ```rs
 /// #[derive(ToAndFro)]
 /// #[default("Load")]

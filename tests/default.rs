@@ -8,7 +8,6 @@ mod tests {
 
     #[derive(ToAndFro)]
     #[default("Generation")]
-    #[input_case("snake")]
     pub enum TestEnum {
         Generation,
         Load,
@@ -16,11 +15,15 @@ mod tests {
     }
 
     #[test]
-    pub fn test() {
+    pub fn default_on_fallback() {
         assert_eq!(
             TestEnum::from_str("Not a variant").unwrap(),
             TestEnum::Generation
         )
     }
 
+    #[test]
+    pub fn default_impl() {
+        assert_eq!(TestEnum::default(), TestEnum::Generation)
+    }
 }

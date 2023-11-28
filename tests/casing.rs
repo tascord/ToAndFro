@@ -18,7 +18,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test() {
+    pub fn basic_casing() {
         // Input snake case
         assert_eq!(
             TestEnum::from_str("lorem_ipsum").unwrap(),
@@ -55,7 +55,7 @@ mod tests {
     }
 
     #[test]
-    pub fn default_casing() {
+    pub fn casing_with_defaults() {
         
         // Input
         assert_eq!(
