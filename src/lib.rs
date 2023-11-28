@@ -1,53 +1,12 @@
-use heck::{
-    AsKebabCase, AsLowerCamelCase, AsPascalCase, AsShoutyKebabCase, AsShoutySnakeCase, AsSnakeCase,
-    AsTitleCase, AsTrainCase, AsUpperCamelCase,
-};
-
+use casing::{match_supplied_casing, Caser, CASES};
+use defaults::fromstr_failure;
 use proc_macro::TokenStream;
-use quote::{format_ident, quote};
+use quote::quote;
 use std::rc::Rc;
-use syn::{parse_macro_input, Data, DeriveInput};
+use syn::{parse_macro_input, punctuated::Punctuated, Data, DeriveInput, Ident, Variant};
 
-type Caser = Rc<Box<dyn Fn(&str) -> String + Send + Sync + 'static>>;
-static CASES: [&str; 11] = [
-    "kebab",
-    "lower_camel",
-    "pascal",
-    "shouty_kebab",
-    "shouty_snake",
-    "snake",
-    "title",
-    "train",
-    "upper_camel",
-    "upper",
-    "lower",
-];
-
-fn match_supplied_casing(ident: &str, attrs: &Vec<syn::Attribute>) -> Option<Caser> {
-    let casing = attrs
-        .iter()
-        .find(|attr| attr.path().is_ident(ident))
-        .map(|attr| attr.parse_args::<syn::LitStr>().unwrap().value());
-
-    if let Some(casing) = casing {
-        match casing.as_str() {
-            "kebab" => Some(Rc::new(Box::new(|s| AsKebabCase(s).to_string()))),
-            "lower_camel" => Some(Rc::new(Box::new(|s| AsLowerCamelCase(s).to_string()))),
-            "pascal" => Some(Rc::new(Box::new(|s| AsPascalCase(s).to_string()))),
-            "shouty_kebab" => Some(Rc::new(Box::new(|s| AsShoutyKebabCase(s).to_string()))),
-            "shouty_snake" => Some(Rc::new(Box::new(|s| AsShoutySnakeCase(s).to_string()))),
-            "snake" => Some(Rc::new(Box::new(|s| AsSnakeCase(s).to_string()))),
-            "title" => Some(Rc::new(Box::new(|s| AsTitleCase(s).to_string()))),
-            "train" => Some(Rc::new(Box::new(|s| AsTrainCase(s).to_string()))),
-            "upper_camel" => Some(Rc::new(Box::new(|s| AsUpperCamelCase(s).to_string()))),
-            "upper" => Some(Rc::new(Box::new(|s| s.to_uppercase()))),
-            "lower" => Some(Rc::new(Box::new(|s| s.to_lowercase()))),
-            _ => panic!("Invalid casing {}", casing),
-        }
-    } else {
-        None
-    }
-}
+mod casing;
+mod defaults;
 
 fn should_reject(attrs: &Vec<syn::Attribute>) -> bool {
     attrs
@@ -68,8 +27,37 @@ fn check_case(args: TokenStream) {
     }
 }
 
+fn map_variant(
+    variants: &Punctuated<Variant, syn::token::Comma>,
+    input_attrs: &Vec<syn::Attribute>,
+    case_attr: &str,
+    reject_if_present: bool,
+    mut cb: impl FnMut(&Ident, String) -> proc_macro2::TokenStream,
+) -> Vec<proc_macro2::TokenStream> {
+    let default_caser: Caser = Rc::new(Box::new(|s| s.to_string()));
+    let default_caser = match_supplied_casing(case_attr, &input_attrs).unwrap_or(default_caser);
+
+    variants
+        .iter()
+        .map(|variant| {
+
+            if reject_if_present && should_reject(&variant.attrs) {
+                return quote!()
+            }
+
+            let caser =
+                match_supplied_casing(case_attr, &variant.attrs).unwrap_or(default_caser.clone());
+
+            let variant_name = &variant.ident;
+            let cased_name = caser(variant_name.to_string().as_str());
+
+            cb(variant_name, cased_name)
+        })
+        .collect()
+}
+
 /// Generate automatic implementations of `FromStr`, `Display`, `Debug`, and `PartialEq` for an enum.
-#[proc_macro_derive(ToAndFro, attributes(input_case, output_case, default, reject))]
+#[proc_macro_derive(ToAndFro, attributes(input_case, output_case, default, reject, casing))]
 pub fn tf_derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let name = input.ident;
@@ -78,50 +66,31 @@ pub fn tf_derive(input: TokenStream) -> TokenStream {
         _ => panic!("Display can only be implemented for enums"),
     };
 
-    let d_caser: Caser = Rc::new(Box::new(|s| s.to_string()));
-    let i_caser = match_supplied_casing("input_case", &input.attrs).unwrap_or(d_caser.clone());
-    let o_caser = match_supplied_casing("output_case", &input.attrs).unwrap_or(d_caser.clone());
+    let from_str_failure = fromstr_failure(name.clone(), &input.attrs);
 
-    let from_str_failure = match input
-        .attrs
-        .iter()
-        .find(|attr| attr.path().is_ident("default"))
-        .map(|attr| attr.parse_args::<syn::LitStr>().unwrap().value())
-    {
-        Some(x) => {
-            let ident = format_ident!("{}", x);
-            quote!(Ok(#name::#ident))
-        }
-        None => quote!(Err(anyhow::anyhow!(
-            "Invalid variant {} for enum {}",
-            s,
-            stringify!(#name)
-        ))),
-    };
+    let from_str_arms = map_variant(
+        &data.variants,
+        &input.attrs,
+        "input_case",
+        true,
+        |variant_name, cased_name| {
+            quote! {
+                #cased_name => Ok(#name::#variant_name),
+            }
+        },
+    );
 
-    let from_str_arms = data.variants.iter().map(|variant| {
-        let variant_name = &variant.ident;
-        if should_reject(&variant.attrs) {
-            return quote!();
-        }
-
-        let caser = match_supplied_casing("input_case", &variant.attrs).unwrap_or(i_caser.clone());
-        let cased_variant = caser(variant_name.to_string().as_str());
-
-        quote! {
-            #cased_variant => Ok(#name::#variant_name),
-        }
-    });
-
-    let display_arms = data.variants.iter().map(|variant| {
-        let variant_name = &variant.ident;
-        let caser = match_supplied_casing("output_case", &variant.attrs).unwrap_or(o_caser.clone());
-        let cased_variant = caser(variant_name.to_string().as_str());
-
-        quote! {
-            #name::#variant_name => write!(f, #cased_variant),
-        }
-    });
+    let display_arms = map_variant(
+        &data.variants,
+        &input.attrs,
+        "output_case",
+        false,
+        |variant_name, cased_name| {
+            quote! {
+                #name::#variant_name => write!(f, #cased_name),
+            }
+        },
+    );
 
     let debug_arms = display_arms.clone();
     let expanded = quote! {
@@ -164,6 +133,25 @@ pub fn tf_derive(input: TokenStream) -> TokenStream {
     };
 
     TokenStream::from(expanded)
+}
+
+/// Define the default case to expect for both parsing, or stringifying.
+/// Valid values are:
+/// - `kebab` [(heck)](https://docs.rs/heck/latest/heck/struct.AsKebabCase.html)
+/// - `pascal` [(heck)](https://docs.rs/heck/latest/heck/struct.AsPascalCase.html)
+/// - `snake` [(heck)](https://docs.rs/heck/latest/heck/struct.AsSnakeCase.html)
+/// - `title` [(heck)](https://docs.rs/heck/latest/heck/struct.AsTitleCase.html)
+/// - `train` [(heck)](https://docs.rs/heck/latest/heck/struct.AsTrainCase.html)
+/// - `lower_camel` [(heck)](https://docs.rs/heck/latest/heck/struct.AsLowerCamelCase.html)
+/// - `upper_camel` [(heck)](https://docs.rs/heck/latest/heck/struct.AsUpperCamelCase.html)
+/// - `shouty_kebab` [(heck)](https://docs.rs/heck/latest/heck/struct.AsShoutyKebabCase.html)
+/// - `shouty_snake` [(heck)](https://docs.rs/heck/latest/heck/struct.AsShoutySnakeCase.html)
+/// - `upper` (UPPERCASE)
+/// - `lower` (lowercase)
+#[proc_macro_attribute]
+pub fn casing(args: TokenStream, input: TokenStream) -> TokenStream {
+    check_case(args);
+    input
 }
 
 /// Define the case to expect when parsing a variant from a string.
