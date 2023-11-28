@@ -1,12 +1,14 @@
 use casing::{match_supplied_casing, Caser, CASES};
-use defaults::{fromstr_failure, default_impl};
+use defaults::{default_impl, fromstr_failure};
+use naming::{create_alias_arms, get_name_for};
 use proc_macro::TokenStream;
-use quote::quote;
+use quote::{format_ident, quote};
 use std::rc::Rc;
-use syn::{parse_macro_input, punctuated::Punctuated, Data, DeriveInput, Ident, Variant, DataEnum};
+use syn::{parse_macro_input, punctuated::Punctuated, Data, DataEnum, DeriveInput, Ident, Variant, ExprLit};
 
 mod casing;
 mod defaults;
+mod naming;
 
 fn should_reject(attrs: &Vec<syn::Attribute>) -> bool {
     attrs
@@ -30,27 +32,40 @@ fn check_case(args: TokenStream) {
 fn map_variant(
     variants: &Punctuated<Variant, syn::token::Comma>,
     input_attrs: &Vec<syn::Attribute>,
-    case_attr: &str,
-    reject_if_present: bool,
+    input_mode: bool,
     mut cb: impl FnMut(&Ident, String) -> proc_macro2::TokenStream,
 ) -> Vec<proc_macro2::TokenStream> {
+    let case_mode = if input_mode {
+        "input_case"
+    } else {
+        "output_case"
+    };
+    let name_mode = if input_mode {
+        "input_name"
+    } else {
+        "output_name"
+    };
+
     let default_caser: Caser = Rc::new(Box::new(|s| s.to_string()));
-    let default_caser = match_supplied_casing(case_attr, &input_attrs).unwrap_or(default_caser);
+    let default_caser = match_supplied_casing(case_mode, &input_attrs).unwrap_or(default_caser);
 
     variants
         .iter()
         .map(|variant| {
-
-            if reject_if_present && should_reject(&variant.attrs) {
-                return quote!()
+            if input_mode && should_reject(&variant.attrs) {
+                return quote!();
             }
 
             let caser =
-                match_supplied_casing(case_attr, &variant.attrs).unwrap_or(default_caser.clone());
+                match_supplied_casing(case_mode, &variant.attrs).unwrap_or(default_caser.clone());
 
             let variant_name = &variant.ident;
-            let cased_name = caser(variant_name.to_string().as_str());
+            let string_name = &match get_name_for(&variant.attrs, name_mode) {
+                Some(name) => format_ident!("{}", name),
+                None => variant_name.clone(),
+            };
 
+            let cased_name = caser(string_name.to_string().as_str());
             cb(variant_name, cased_name)
         })
         .collect()
@@ -67,23 +82,36 @@ fn preamble(input: DeriveInput) -> (DeriveInput, Ident, DataEnum) {
 }
 
 /// Generate automatic implementations of `FromStr`, `Display`, `Debug`, and `PartialEq` for an enum.
-#[proc_macro_derive(ToAndFro, attributes(input_case, output_case, default, reject, casing))]
+#[proc_macro_derive(
+    ToAndFro,
+    attributes(
+        input_case,
+        output_case,
+        default,
+        reject,
+        casing,
+        alias,
+        rename,
+        input_name,
+        output_name
+    )
+)]
 pub fn tf_derive(input: TokenStream) -> TokenStream {
-    let (input, name, data) = preamble(parse_macro_input!(input as DeriveInput));    
+    let (input, name, data) = preamble(parse_macro_input!(input as DeriveInput));
 
-    // Generated based on default attr
+    // Generated based on field attrs
     let from_str_failure = fromstr_failure(name.clone(), &input.attrs);
     let default_impl = default_impl(name.clone(), &input.attrs);
+    let alias_arms = create_alias_arms(data.variants.clone());
 
     // Generated based on variants
     let from_str_arms = map_variant(
         &data.variants,
         &input.attrs,
-        "input_case",
         true,
         |variant_name, cased_name| {
             quote! {
-                #cased_name => Ok(#name::#variant_name),
+                #cased_name => Ok(Self::#variant_name),
             }
         },
     );
@@ -92,11 +120,10 @@ pub fn tf_derive(input: TokenStream) -> TokenStream {
     let display_arms = map_variant(
         &data.variants,
         &input.attrs,
-        "output_case",
         false,
         |variant_name, cased_name| {
             quote! {
-                #name::#variant_name => write!(f, #cased_name),
+                Self::#variant_name => write!(f, #cased_name),
             }
         },
     );
@@ -135,6 +162,7 @@ pub fn tf_derive(input: TokenStream) -> TokenStream {
             fn from_str(s: &str) -> Result<Self, Self::Err> {
                 match s {
                     #(#from_str_arms)*
+                    #alias_arms
                     _ => #from_str_failure
                 }
             }
@@ -230,6 +258,49 @@ pub fn default(args: TokenStream, input: TokenStream) -> TokenStream {
 pub fn reject(args: TokenStream, input: TokenStream) -> TokenStream {
     if !args.is_empty() {
         panic!("#[reject] does not take arguments");
+    }
+
+    input
+}
+
+/// Defines an alias for a variant, allowing an alternate name to be used when parsing FromStr.
+/// ```rs
+/// #[derive(ToAndFro)]
+/// pub enum TestEnum {
+///  Generation,
+///  Load,
+///  #[alias("People")]
+///  Customers,
+/// }
+///
+/// assert_eq!(TestEnum::from_str("People").unwrap(), TestEnum::Customers);
+/// ```
+#[proc_macro_attribute]
+pub fn alias(args: TokenStream, input: TokenStream) -> TokenStream {
+    if args.clone().into_iter().count() != 1 {
+        panic!("#[alias(\"...\")] takes one argument");
+    }
+
+    input
+}
+
+/// Redefines the name of the Variant for purposes of Input and Output, ignoring casing.
+/// ```rs
+/// #[derive(ToAndFro)]
+///   pub enum TestEnum {
+///   Generation,
+///   Load,
+///   #[rename("People")]
+///   Customers,
+/// }
+///
+/// assert_eq!(TestEnum::from_str("People").unwrap(), TestEnum::Customers);
+/// assert!(TestEnum::from_str("Load").is_err());
+/// ```
+#[proc_macro_attribute]
+pub fn rename(args: TokenStream, input: TokenStream) -> TokenStream {
+    if args.clone().into_iter().count() != 1 {
+        panic!("#[rename(\"...\")] takes one argument");
     }
 
     input
