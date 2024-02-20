@@ -6,7 +6,7 @@ mod tests {
     use std::str::FromStr;
     use to_and_fro::ToAndFro;
 
-    #[derive(ToAndFro)]
+    #[derive(ToAndFro, Debug)]
     pub enum TestEnum {
         Generation,
         Load,

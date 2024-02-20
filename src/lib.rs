@@ -1,9 +1,9 @@
 use casing::{match_supplied_casing, Caser, CASES};
-use defaults::{fromstr_failure, default_impl};
+use defaults::{default_impl, fromstr_failure};
 use proc_macro::TokenStream;
 use quote::quote;
 use std::rc::Rc;
-use syn::{parse_macro_input, punctuated::Punctuated, Data, DeriveInput, Ident, Variant, DataEnum};
+use syn::{parse_macro_input, punctuated::Punctuated, Data, DataEnum, DeriveInput, Ident, Variant};
 
 mod casing;
 mod defaults;
@@ -40,9 +40,8 @@ fn map_variant(
     variants
         .iter()
         .map(|variant| {
-
             if reject_if_present && should_reject(&variant.attrs) {
-                return quote!()
+                return quote!();
             }
 
             let caser =
@@ -69,7 +68,7 @@ fn preamble(input: DeriveInput) -> (DeriveInput, Ident, DataEnum) {
 /// Generate automatic implementations of `FromStr`, `Display`, `Debug`, and `PartialEq` for an enum.
 #[proc_macro_derive(ToAndFro, attributes(input_case, output_case, default, reject, casing))]
 pub fn tf_derive(input: TokenStream) -> TokenStream {
-    let (input, name, data) = preamble(parse_macro_input!(input as DeriveInput));    
+    let (input, name, data) = preamble(parse_macro_input!(input as DeriveInput));
 
     // Generated based on default attr
     let from_str_failure = fromstr_failure(name.clone(), &input.attrs);
@@ -104,21 +103,9 @@ pub fn tf_derive(input: TokenStream) -> TokenStream {
     // Try from uses the same as from_str
     let try_from_arms = from_str_arms.clone();
 
-    // Debug uses the same arms as Display
-    let debug_arms = display_arms.clone();
-
     let expanded = quote! {
 
         #default_impl
-
-        impl std::fmt::Debug for #name {
-            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-                match self {
-                    #(#debug_arms)*
-                }
-            }
-        }
-
         impl std::cmp::PartialEq for #name {
             fn eq(&self, other: &Self) -> bool {
                 std::mem::discriminant(self) == std::mem::discriminant(other)
