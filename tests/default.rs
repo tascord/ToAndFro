@@ -26,4 +26,9 @@ mod tests {
     pub fn default_impl() {
         assert_eq!(TestEnum::default(), TestEnum::Generation)
     }
+
+    #[test]
+    pub fn try_from_str() {
+        assert!(TestEnum::try_from("Load".to_string()).is_ok())
+    }
 }

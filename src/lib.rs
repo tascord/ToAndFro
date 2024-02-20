@@ -101,8 +101,12 @@ pub fn tf_derive(input: TokenStream) -> TokenStream {
         },
     );
 
+    // Try from uses the same as from_str
+    let try_from_arms = from_str_arms.clone();
+
     // Debug uses the same arms as Display
     let debug_arms = display_arms.clone();
+
     let expanded = quote! {
 
         #default_impl
@@ -135,6 +139,17 @@ pub fn tf_derive(input: TokenStream) -> TokenStream {
             fn from_str(s: &str) -> Result<Self, Self::Err> {
                 match s {
                     #(#from_str_arms)*
+                    _ => #from_str_failure
+                }
+            }
+        }
+
+        impl std::convert::TryFrom<String> for #name {
+            type Error = anyhow::Error;
+
+            fn try_from(s: String) -> Result<Self, Self::Error> {
+                match s.as_str() {
+                    #(#try_from_arms)*
                     _ => #from_str_failure
                 }
             }
