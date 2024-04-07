@@ -85,6 +85,7 @@ TestEnum::from_str("ValueOne")  // anyhow::Error("Invalid variant ValueOne for e
 - `shouty_snake` [(heck)](https://docs.rs/heck/latest/heck/struct.AsShoutySnakeCase.html)
 - `upper` (UPPERCASE)
 - `lower` (lowercase)
+- `percent` (urlencoded)
 
 ## Feedback
 I appreciate all feedback, in whatever forms they might take.  

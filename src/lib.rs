@@ -160,6 +160,7 @@ pub fn tf_derive(input: TokenStream) -> TokenStream {
 /// - `shouty_snake` [(heck)](https://docs.rs/heck/latest/heck/struct.AsShoutySnakeCase.html)
 /// - `upper` (UPPERCASE)
 /// - `lower` (lowercase)
+/// - percent (urlencoded)
 #[proc_macro_attribute]
 pub fn casing(args: TokenStream, input: TokenStream) -> TokenStream {
     check_case(args);
@@ -179,6 +180,7 @@ pub fn casing(args: TokenStream, input: TokenStream) -> TokenStream {
 /// - `shouty_snake` [(heck)](https://docs.rs/heck/latest/heck/struct.AsShoutySnakeCase.html)
 /// - `upper` (UPPERCASE)
 /// - `lower` (lowercase)
+/// - percent (urlencoded)
 #[proc_macro_attribute]
 pub fn input_case(args: TokenStream, input: TokenStream) -> TokenStream {
     check_case(args);
@@ -198,6 +200,7 @@ pub fn input_case(args: TokenStream, input: TokenStream) -> TokenStream {
 /// - `shouty_snake` [(heck)](https://docs.rs/heck/latest/heck/struct.AsShoutySnakeCase.html)
 /// - `upper` (UPPERCASE)
 /// - `lower` (lowercase)
+/// - percent (urlencoded)
 #[proc_macro_attribute]
 pub fn output_case(args: TokenStream, input: TokenStream) -> TokenStream {
     check_case(args);

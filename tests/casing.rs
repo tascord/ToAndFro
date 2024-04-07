@@ -5,6 +5,7 @@ mod tests {
 
     use std::str::FromStr;
     use to_and_fro::*;
+    use urlencoding::encode;
 
     #[derive(ToAndFro, Debug)]
     pub enum TestEnum {
@@ -15,6 +16,8 @@ mod tests {
         #[input_case("lower")]
         #[output_case("upper")]
         ConsecteturAdipiscingElit,
+        #[casing("percent")]
+        SedDoEiusmod, 
     }
 
     #[test]
@@ -44,6 +47,12 @@ mod tests {
         assert_eq!(
             "CONSECTETURADIPISCINGELIT",
             TestEnum::ConsecteturAdipiscingElit.to_string()
+        );
+
+        // Percent encoding
+        assert_eq!(
+            TestEnum::from_str(&encode("SedDoEiusmod").to_string()).unwrap(),
+            TestEnum::SedDoEiusmod
         );
     }
 
