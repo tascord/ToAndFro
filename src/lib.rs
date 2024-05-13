@@ -8,11 +8,10 @@ use syn::{parse_macro_input, punctuated::Punctuated, Data, DataEnum, DeriveInput
 mod casing;
 mod defaults;
 
-fn should_reject(attrs: &Vec<syn::Attribute>) -> bool {
+fn should_reject(attrs: &[syn::Attribute]) -> bool {
     attrs
         .iter()
-        .find(|attr| attr.path().is_ident("reject"))
-        .is_some()
+        .any(|attr| attr.path().is_ident("reject"))
 }
 
 fn check_case(args: TokenStream) {
@@ -29,13 +28,13 @@ fn check_case(args: TokenStream) {
 
 fn map_variant(
     variants: &Punctuated<Variant, syn::token::Comma>,
-    input_attrs: &Vec<syn::Attribute>,
+    input_attrs: &[syn::Attribute],
     case_attr: &str,
     reject_if_present: bool,
     mut cb: impl FnMut(&Ident, String) -> proc_macro2::TokenStream,
 ) -> Vec<proc_macro2::TokenStream> {
     let default_caser: Caser = Rc::new(Box::new(|s| s.to_string()));
-    let default_caser = match_supplied_casing(case_attr, &input_attrs).unwrap_or(default_caser);
+    let default_caser = match_supplied_casing(case_attr, input_attrs).unwrap_or(default_caser);
 
     variants
         .iter()
