@@ -5,7 +5,6 @@ mod tests {
 
     use std::str::FromStr;
     use to_and_fro::*;
-    use urlencoding::encode;
 
     #[derive(ToAndFro, Debug)]
     pub enum TestEnum {
@@ -17,7 +16,7 @@ mod tests {
         #[output_case("upper")]
         ConsecteturAdipiscingElit,
         #[casing("percent")]
-        SedDoEiusmod, 
+        SedDoEiusmod,
     }
 
     #[test]
@@ -51,7 +50,14 @@ mod tests {
 
         // Percent encoding
         assert_eq!(
-            TestEnum::from_str(&encode("SedDoEiusmod").to_string()).unwrap(),
+            TestEnum::from_str(
+                &percent_encoding::utf8_percent_encode(
+                    "SedDoEiusmod",
+                    percent_encoding::NON_ALPHANUMERIC
+                )
+                .to_string()
+            )
+            .unwrap(),
             TestEnum::SedDoEiusmod
         );
     }
@@ -65,7 +71,6 @@ mod tests {
 
     #[test]
     pub fn casing_with_defaults() {
-        
         // Input
         assert_eq!(
             TestEnum2::from_str("lorem_ipsum").unwrap(),
@@ -73,10 +78,6 @@ mod tests {
         );
 
         // Output
-        assert_eq!(
-            "lorem-ipsum",
-            TestEnum2::LoremIpsum.to_string()
-        );
-
+        assert_eq!("lorem-ipsum", TestEnum2::LoremIpsum.to_string());
     }
 }

@@ -2,7 +2,6 @@ use heck::{
     AsKebabCase, AsLowerCamelCase, AsPascalCase, AsShoutyKebabCase, AsShoutySnakeCase, AsSnakeCase,
     AsTitleCase, AsTrainCase, AsUpperCamelCase,
 };
-use urlencoding::encode;
 use std::rc::Rc;
 
 pub type Caser = Rc<Box<dyn Fn(&str) -> String + Send + Sync + 'static>>;
@@ -19,10 +18,10 @@ pub static CASES: [&str; 12] = [
     "upper_camel",
     "upper",
     "lower",
-    "percent"
+    "percent",
 ];
 
-pub fn match_supplied_casing(ident: &str, attrs: &Vec<syn::Attribute>) -> Option<Caser> {
+pub fn match_supplied_casing(ident: &str, attrs: &[syn::Attribute]) -> Option<Caser> {
     let casing = attrs
         .iter()
         .find(|attr| attr.path().is_ident(ident))
@@ -45,7 +44,10 @@ pub fn match_supplied_casing(ident: &str, attrs: &Vec<syn::Attribute>) -> Option
             "upper_camel" => Some(Rc::new(Box::new(|s| AsUpperCamelCase(s).to_string()))),
             "upper" => Some(Rc::new(Box::new(|s| s.to_uppercase()))),
             "lower" => Some(Rc::new(Box::new(|s| s.to_lowercase()))),
-            "percent" => Some(Rc::new(Box::new(|s| encode(s).to_string()))),
+            "percent" => Some(Rc::new(Box::new(|s| {
+                percent_encoding::utf8_percent_encode(s, percent_encoding::NON_ALPHANUMERIC)
+                    .to_string()
+            }))),
             _ => panic!("Invalid casing {}", casing),
         }
     } else {

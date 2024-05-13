@@ -1,6 +1,6 @@
 [package]
 name = "to_and_fro"
-version = "0.5.1"
+version = "0.5.2"
 edition = "2021"
 description = "Proc macro for generating implimentations of Display and FromStr for Enum Variants"
 repository = "https://github.com/tascord/ToAndFro"
@@ -17,4 +17,4 @@ heck = "0.5.0"
 proc-macro2 = "1.0.70"
 quote = "1.0.33"
 syn = { version = "2.0.39", features = ["full", "fold"] }
-urlencoding = "2.1.3"
+percent-encoding = "2.3.1"
