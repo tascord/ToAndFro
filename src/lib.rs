@@ -9,9 +9,7 @@ mod casing;
 mod defaults;
 
 fn should_reject(attrs: &[syn::Attribute]) -> bool {
-    attrs
-        .iter()
-        .any(|attr| attr.path().is_ident("reject"))
+    attrs.iter().any(|attr| attr.path().is_ident("reject"))
 }
 
 fn check_case(args: TokenStream) {
@@ -65,7 +63,10 @@ fn preamble(input: DeriveInput) -> (DeriveInput, Ident, DataEnum) {
 }
 
 /// Generate automatic implementations of `FromStr`, `Display`, `Debug`, and `PartialEq` for an enum.
-#[proc_macro_derive(ToAndFro, attributes(input_case, output_case, default, reject, casing))]
+#[proc_macro_derive(
+    ToAndFro,
+    attributes(input_case, output_case, default, reject, casing, serde)
+)]
 pub fn tf_derive(input: TokenStream) -> TokenStream {
     let (input, name, data) = preamble(parse_macro_input!(input as DeriveInput));
 
@@ -102,9 +103,40 @@ pub fn tf_derive(input: TokenStream) -> TokenStream {
     // Try from uses the same as from_str
     let try_from_arms = from_str_arms.clone();
 
+    // Serde impl
+    let serde_impl = &input
+        .attrs
+        .iter()
+        .find(|attr| attr.path().is_ident("serde"))
+        .map(|_| {
+            quote! {
+                impl Serialize for #name {
+                    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+                    where
+                        S: Serializer,
+                    {
+                        serializer.serialize_str(&self.to_string())
+                    }
+                }
+
+                impl<'de> Deserialize<'de> for #name {
+                    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+                    where
+                        D: Deserializer<'de>,
+                    {
+                        let s = String::deserialize(deserializer)?;
+                        Self::from_str(&s).map_err(serde::de::Error::custom)
+                    }
+                }
+            }
+        })
+        .unwrap_or(quote!());
+
     let expanded = quote! {
 
         #default_impl
+        #serde_impl
+
         impl std::cmp::PartialEq for #name {
             fn eq(&self, other: &Self) -> bool {
                 std::mem::discriminant(self) == std::mem::discriminant(other)
@@ -234,6 +266,16 @@ pub fn default(args: TokenStream, input: TokenStream) -> TokenStream {
 pub fn reject(args: TokenStream, input: TokenStream) -> TokenStream {
     if !args.is_empty() {
         panic!("#[reject] does not take arguments");
+    }
+
+    input
+}
+
+/// Impliments `serde::Serialize` and `serde::Deserialize` for the enum.
+#[proc_macro_attribute]
+pub fn serde(args: TokenStream, input: TokenStream) -> TokenStream {
+    if !args.is_empty() {
+        panic!("#[serde] does not take arguments");
     }
 
     input
