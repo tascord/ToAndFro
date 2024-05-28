@@ -73,6 +73,17 @@ pub enum TestEnum {
 TestEnum::from_str("ValueOne")  // anyhow::Error("Invalid variant ValueOne for enum TestEnum")
 ```
 
+### Implement `Serialize` and `Deserialize` from `serde`
+```rs
+#[derive(ToAndFro)]
+#[serde]
+pub enum TestEnum {
+  ValueOne,
+  ValueTwo,
+  ValueThree
+}
+```
+
 #### List of supported cases:
 - `kebab` [(heck)](https://docs.rs/heck/latest/heck/struct.AsKebabCase.html)
 - `pascal` [(heck)](https://docs.rs/heck/latest/heck/struct.AsPascalCase.html)
