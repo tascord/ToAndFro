@@ -110,19 +110,19 @@ pub fn tf_derive(input: TokenStream) -> TokenStream {
         .find(|attr| attr.path().is_ident("serde"))
         .map(|_| {
             quote! {
-                impl Serialize for #name {
+                impl serde::Serialize for #name {
                     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
                     where
-                        S: Serializer,
+                        S: serde::Serializer,
                     {
                         serializer.serialize_str(&self.to_string())
                     }
                 }
 
-                impl<'de> Deserialize<'de> for #name {
+                impl<'de> serde::Deserialize<'de> for #name {
                     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
                     where
-                        D: Deserializer<'de>,
+                        D: serde::Deserializer<'de>,
                     {
                         let s = String::deserialize(deserializer)?;
                         Self::from_str(&s).map_err(serde::de::Error::custom)

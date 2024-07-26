@@ -3,7 +3,7 @@ extern crate to_and_fro;
 #[cfg(test)]
 mod tests {
 
-    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+    use serde::{Deserialize, Serialize};
     use std::str::FromStr;
     use to_and_fro::*;
 

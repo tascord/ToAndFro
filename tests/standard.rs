@@ -2,7 +2,6 @@ extern crate to_and_fro;
 
 #[cfg(test)]
 mod tests {
-
     use std::str::FromStr;
     use to_and_fro::ToAndFro;
 
