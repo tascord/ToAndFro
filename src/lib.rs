@@ -1,7 +1,7 @@
 use casing::{match_supplied_casing, Caser, CASES};
 use defaults::{default_impl, fromstr_failure};
 use proc_macro::TokenStream;
-use quote::quote;
+use quote::{quote, ToTokens};
 use std::rc::Rc;
 use syn::{parse_macro_input, punctuated::Punctuated, Data, DataEnum, DeriveInput, Ident, Variant};
 
@@ -100,6 +100,12 @@ pub fn tf_derive(input: TokenStream) -> TokenStream {
         },
     );
 
+    let variant_count = data.variants.len();
+    let variants = data.variants.into_iter().map(|mut v| {
+        v.attrs = Vec::new();
+        v.to_token_stream()
+    });
+
     // Try from uses the same as from_str
     let try_from_arms = from_str_arms.clone();
 
@@ -173,6 +179,13 @@ pub fn tf_derive(input: TokenStream) -> TokenStream {
             }
         }
 
+        impl #name {
+            fn list() -> [#name; #variant_count] {
+                [
+                   #( #name::#variants, )*
+                ]
+            }
+        }
     };
 
     TokenStream::from(expanded)
