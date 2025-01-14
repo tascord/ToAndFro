@@ -101,10 +101,7 @@ pub fn tf_derive(input: TokenStream) -> TokenStream {
     );
 
     let variant_count = data.variants.len();
-    let variants = data.variants.into_iter().map(|mut v| {
-        v.attrs = Vec::new();
-        v.to_token_stream()
-    });
+    let variants = data.variants.iter().map(|v| v.ident.to_token_stream());
 
     // Try from uses the same as from_str
     let try_from_arms = from_str_arms.clone();
@@ -138,10 +135,26 @@ pub fn tf_derive(input: TokenStream) -> TokenStream {
         })
         .unwrap_or(quote!());
 
+    // only allow list() on enums that don't have fields
+    let list = if data.variants.iter().all(|v| v.fields.is_empty()) {
+        quote!(
+            impl #name {
+                fn list() -> [#name; #variant_count] {
+                    [
+                    #( #name::#variants, )*
+                    ]
+                }
+            }
+        )
+    } else {
+        quote!()
+    };
+
     let expanded = quote! {
 
         #default_impl
         #serde_impl
+        #list
 
         impl std::cmp::PartialEq for #name {
             fn eq(&self, other: &Self) -> bool {
@@ -179,13 +192,6 @@ pub fn tf_derive(input: TokenStream) -> TokenStream {
             }
         }
 
-        impl #name {
-            fn list() -> [#name; #variant_count] {
-                [
-                   #( #name::#variants, )*
-                ]
-            }
-        }
     };
 
     TokenStream::from(expanded)
