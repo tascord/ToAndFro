@@ -139,7 +139,7 @@ pub fn tf_derive(input: TokenStream) -> TokenStream {
     let list = if data.variants.iter().all(|v| v.fields.is_empty()) {
         quote!(
             impl #name {
-                fn list() -> [#name; #variant_count] {
+                pub fn list() -> [#name; #variant_count] {
                     [
                     #( #name::#variants, )*
                     ]
