@@ -62,7 +62,7 @@ fn preamble(input: DeriveInput) -> (DeriveInput, Ident, DataEnum) {
     (input, name, data)
 }
 
-/// Generate automatic implementations of `FromStr`, `Display`, `Debug`, `PartialEq`, `Eq` and `Hash` for an enum.
+/// Generate automatic implementations of `FromStr`, `TryFrom<str-like>`, `Display`, `Debug`, `PartialEq`, `Eq` and `Hash` for an enum.
 #[proc_macro_derive(
     ToAndFro,
     attributes(input_case, output_case, default, reject, casing, serde)
@@ -95,7 +95,20 @@ pub fn tf_derive(input: TokenStream) -> TokenStream {
         false,
         |variant_name, cased_name| {
             quote! {
-                #name::#variant_name => write!(f, #cased_name),
+                #name::#variant_name => f.write_str(#cased_name),
+            }
+        },
+    );
+
+    // Generated based on variants
+    let str_arms = map_variant(
+        &data.variants,
+        &input.attrs,
+        "output_case",
+        false,
+        |variant_name, cased_name| {
+            quote! {
+                #name::#variant_name => #cased_name,
             }
         },
     );
@@ -164,6 +177,14 @@ pub fn tf_derive(input: TokenStream) -> TokenStream {
         #default_impl
         #serde_impl
         #list
+
+        impl #name {
+            fn as_str(&self) -> &'static str {
+                match self {
+                    #(#str_arms)*
+                }
+            }
+        }
 
         impl Clone for #name {
             fn clone(&self) -> #name {

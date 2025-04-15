@@ -14,7 +14,8 @@ mod tests {
 
     #[test]
     pub fn test_display() {
-        assert_eq!(format!("{}", TestEnum::Generation), "Generation")
+        assert_eq!(format!("{}", TestEnum::Generation), "Generation");
+        assert_eq!(TestEnum::Generation.as_str(), "Generation");
     }
 
     #[test]
