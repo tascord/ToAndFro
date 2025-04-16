@@ -88,14 +88,18 @@ pub fn tf_derive(input: TokenStream) -> TokenStream {
     );
 
     // Generated based on variants
-    let display_arms = map_variant(
+    let dbg_arms = map_variant(
         &data.variants,
         &input.attrs,
         "output_case",
         false,
-        |variant_name, cased_name| {
+        |variant_name, _| {
             quote! {
-                #name::#variant_name => f.write_str(#cased_name),
+                #name::#variant_name => {
+                    f.write_str(stringify!(#name))?;
+                    f.write_str("::")?;
+                    f.write_str(stringify!(#variant_name))
+                },
             }
         },
     );
@@ -212,8 +216,14 @@ pub fn tf_derive(input: TokenStream) -> TokenStream {
 
         impl std::fmt::Display for #name {
             fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                f.write_str(self.as_str())
+            }
+        }
+
+        impl std::fmt::Debug for #name {
+            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
                 match self {
-                    #(#display_arms)*
+                    #(#dbg_arms)*
                 }
             }
         }

@@ -6,7 +6,7 @@ mod tests {
     use std::str::FromStr;
     use to_and_fro::*;
 
-    #[derive(ToAndFro, Debug)]
+    #[derive(ToAndFro)]
     pub enum TestEnum {
         #[input_case("snake")]
         LoremIpsum,
@@ -62,7 +62,7 @@ mod tests {
         );
     }
 
-    #[derive(ToAndFro, Debug)]
+    #[derive(ToAndFro)]
     #[input_case("snake")]
     #[output_case("kebab")]
     pub enum TestEnum2 {
@@ -79,5 +79,9 @@ mod tests {
 
         // Output
         assert_eq!("lorem-ipsum", TestEnum2::LoremIpsum.to_string());
+        assert_eq!(
+            "TestEnum2::LoremIpsum",
+            format!("{:?}", TestEnum2::LoremIpsum)
+        );
     }
 }

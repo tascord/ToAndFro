@@ -5,7 +5,7 @@ mod tests {
     use std::{collections::HashSet, str::FromStr};
     use to_and_fro::ToAndFro;
 
-    #[derive(ToAndFro, Debug)]
+    #[derive(ToAndFro)]
     pub enum TestEnum {
         Generation,
         Load,
@@ -16,6 +16,14 @@ mod tests {
     pub fn test_display() {
         assert_eq!(format!("{}", TestEnum::Generation), "Generation");
         assert_eq!(TestEnum::Generation.as_str(), "Generation");
+    }
+
+    #[test]
+    pub fn test_debug() {
+        assert_eq!(
+            format!("{:?}", TestEnum::Generation),
+            "TestEnum::Generation"
+        );
     }
 
     #[test]

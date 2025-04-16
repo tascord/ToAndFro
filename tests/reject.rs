@@ -5,7 +5,7 @@ mod tests {
     use std::str::FromStr;
     use to_and_fro::ToAndFro;
 
-    #[derive(ToAndFro, Debug)]
+    #[derive(ToAndFro)]
     #[allow(dead_code)]
     pub enum TestEnum {
         #[reject]
@@ -28,7 +28,7 @@ mod tests {
         assert!(TestEnum::from_str("Customers").is_ok());
     }
 
-    #[derive(ToAndFro, Debug)]
+    #[derive(ToAndFro)]
     #[allow(dead_code)]
     #[default("Load")]
     pub enum TestEnum2 {
