@@ -7,7 +7,7 @@ mod tests {
     use std::str::FromStr;
     use to_and_fro::*;
 
-    #[derive(ToAndFro, Debug)]
+    #[derive(ToAndFro)]
     #[casing("kebab")]
     #[serde]
     pub enum TestEnum {

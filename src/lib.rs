@@ -62,7 +62,7 @@ fn preamble(input: DeriveInput) -> (DeriveInput, Ident, DataEnum) {
     (input, name, data)
 }
 
-/// Generate automatic implementations of `FromStr`, `Display`, `Debug`, and `PartialEq` for an enum.
+/// Generate automatic implementations of `FromStr`, `TryFrom<str-like>`, `Display`, `Debug`, `PartialEq`, `Eq` and `Hash` for an enum.
 #[proc_macro_derive(
     ToAndFro,
     attributes(input_case, output_case, default, reject, casing, serde)
@@ -88,23 +88,49 @@ pub fn tf_derive(input: TokenStream) -> TokenStream {
     );
 
     // Generated based on variants
-    let display_arms = map_variant(
+    let dbg_arms = map_variant(
+        &data.variants,
+        &input.attrs,
+        "output_case",
+        false,
+        |variant_name, _| {
+            quote! {
+                #name::#variant_name => {
+                    f.write_str(stringify!(#name))?;
+                    f.write_str("::")?;
+                    f.write_str(stringify!(#variant_name))
+                },
+            }
+        },
+    );
+
+    // Generated based on variants
+    let str_arms = map_variant(
         &data.variants,
         &input.attrs,
         "output_case",
         false,
         |variant_name, cased_name| {
             quote! {
-                #name::#variant_name => write!(f, #cased_name),
+                #name::#variant_name => #cased_name,
+            }
+        },
+    );
+
+    let clone_arms = map_variant(
+        &data.variants,
+        &input.attrs,
+        "output_case",
+        false,
+        |variant_name, _| {
+            quote! {
+                #name::#variant_name => #name::#variant_name,
             }
         },
     );
 
     let variant_count = data.variants.len();
     let variants = data.variants.iter().map(|v| v.ident.to_token_stream());
-
-    // Try from uses the same as from_str
-    let try_from_arms = from_str_arms.clone();
 
     // Serde impl
     let serde_impl = &input
@@ -156,16 +182,48 @@ pub fn tf_derive(input: TokenStream) -> TokenStream {
         #serde_impl
         #list
 
+        impl #name {
+            fn as_str(&self) -> &'static str {
+                match self {
+                    #(#str_arms)*
+                }
+            }
+        }
+
+        impl Clone for #name {
+            fn clone(&self) -> #name {
+                match self {
+                    #(#clone_arms)*
+                }
+            }
+        }
+
+        impl Copy for #name {}
+
         impl std::cmp::PartialEq for #name {
             fn eq(&self, other: &Self) -> bool {
                 std::mem::discriminant(self) == std::mem::discriminant(other)
             }
         }
 
+        impl std::cmp::Eq for #name {}
+
+        impl std::hash::Hash for #name {
+            fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+                std::mem::discriminant(self).hash(state)
+            }
+        }
+
         impl std::fmt::Display for #name {
             fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                f.write_str(self.as_str())
+            }
+        }
+
+        impl std::fmt::Debug for #name {
+            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
                 match self {
-                    #(#display_arms)*
+                    #(#dbg_arms)*
                 }
             }
         }
@@ -181,17 +239,77 @@ pub fn tf_derive(input: TokenStream) -> TokenStream {
             }
         }
 
+        impl std::convert::TryFrom<std::rc::Rc<str>> for #name {
+            type Error = anyhow::Error;
+
+            fn try_from(s: std::rc::Rc<str>) -> Result<Self, Self::Error> {
+                s.parse()
+            }
+        }
+
+        impl<'a> std::convert::TryFrom<&'a std::rc::Rc<str>> for #name {
+            type Error = anyhow::Error;
+
+            fn try_from(s: &'a std::rc::Rc<str>) -> Result<Self, Self::Error> {
+                s.parse()
+            }
+        }
+
+        impl std::convert::TryFrom<std::sync::Arc<str>> for #name {
+            type Error = anyhow::Error;
+
+            fn try_from(s: std::sync::Arc<str>) -> Result<Self, Self::Error> {
+                s.parse()
+            }
+        }
+
+        impl<'a> std::convert::TryFrom<&'a std::sync::Arc<str>> for #name {
+            type Error = anyhow::Error;
+
+            fn try_from(s: &'a std::sync::Arc<str>) -> Result<Self, Self::Error> {
+                s.parse()
+            }
+        }
+
+        impl std::convert::TryFrom<std::boxed::Box<str>> for #name {
+            type Error = anyhow::Error;
+
+            fn try_from(s: std::boxed::Box<str>) -> Result<Self, Self::Error> {
+                s.parse()
+            }
+        }
+
+        impl<'a> std::convert::TryFrom<&'a std::boxed::Box<str>> for #name {
+            type Error = anyhow::Error;
+
+            fn try_from(s: &'a std::boxed::Box<str>) -> Result<Self, Self::Error> {
+                s.parse()
+            }
+        }
+
         impl std::convert::TryFrom<String> for #name {
             type Error = anyhow::Error;
 
             fn try_from(s: String) -> Result<Self, Self::Error> {
-                match s.as_str() {
-                    #(#try_from_arms)*
-                    _ => #from_str_failure
-                }
+                s.parse()
             }
         }
 
+        impl<'a> std::convert::TryFrom<&'a String> for #name {
+            type Error = anyhow::Error;
+
+            fn try_from(s: &'a String) -> Result<Self, Self::Error> {
+                s.parse()
+            }
+        }
+
+        impl<'a> std::convert::TryFrom<&'a str> for #name {
+            type Error = anyhow::Error;
+
+            fn try_from(s: &'a str) -> Result<Self, Self::Error> {
+                s.parse()
+            }
+        }
     };
 
     TokenStream::from(expanded)
