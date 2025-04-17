@@ -183,7 +183,7 @@ pub fn tf_derive(input: TokenStream) -> TokenStream {
         #list
 
         impl #name {
-            fn as_str(&self) -> &'static str {
+            pub fn as_str(&self) -> &'static str {
                 match self {
                     #(#str_arms)*
                 }
